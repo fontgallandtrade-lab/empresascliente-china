@@ -19,7 +19,7 @@ export default function Login() {
 
       Alert.alert('Sucesso', `Bem-vindo ${user.name}`);
 
-      router.replace('/');
+      router.replace('/dashboard' as any);
     } catch (err: any) {
       Alert.alert(
         'Erro',
