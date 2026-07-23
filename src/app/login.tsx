@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { router } from 'expo-router';
 import { loginUser } from '../store/auth.store';
 
@@ -13,27 +19,46 @@ export default function Login() {
       setLoading(true);
 
       const user = await loginUser({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 
       Alert.alert('Sucesso', `Bem-vindo ${user.name}`);
-
       router.replace('/dashboard' as any);
     } catch (err: any) {
-      Alert.alert(
-        'Erro',
-        err?.response?.data?.message || 'Falha no login'
-      );
+      console.log('===== LOGIN ERROR =====');
+      console.log(err);
+      console.log('message:', err?.message);
+      console.log('code:', err?.code);
+      console.log('response:', err?.response?.data);
+
+      const detalhes =
+        err?.response?.data?.message ||
+        err?.message ||
+        err?.code ||
+        'Erro desconhecido';
+
+      Alert.alert('Erro no login', String(detalhes));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <View style={{ flex:1, padding:25, justifyContent:'center' }}>
-
-      <Text style={{fontSize:30,fontWeight:'bold',marginBottom:30}}>
+    <View
+      style={{
+        flex: 1,
+        padding: 25,
+        justifyContent: 'center',
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 30,
+          fontWeight: 'bold',
+          marginBottom: 30,
+        }}
+      >
         ChinaFast
       </Text>
 
@@ -42,11 +67,13 @@ export default function Login() {
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
         style={{
-          borderWidth:1,
-          borderRadius:8,
-          padding:15,
-          marginBottom:15
+          borderWidth: 1,
+          borderRadius: 8,
+          padding: 15,
+          marginBottom: 15,
         }}
       />
 
@@ -55,11 +82,13 @@ export default function Login() {
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+        autoCapitalize="none"
+        autoCorrect={false}
         style={{
-          borderWidth:1,
-          borderRadius:8,
-          padding:15,
-          marginBottom:20
+          borderWidth: 1,
+          borderRadius: 8,
+          padding: 15,
+          marginBottom: 20,
         }}
       />
 
@@ -67,22 +96,22 @@ export default function Login() {
         onPress={handleLogin}
         disabled={loading}
         style={{
-          backgroundColor:'#ff6600',
-          padding:18,
-          borderRadius:10
-        }}>
-
+          backgroundColor: '#ff6600',
+          padding: 18,
+          borderRadius: 10,
+          opacity: loading ? 0.7 : 1,
+        }}
+      >
         <Text
           style={{
-            color:'#fff',
-            textAlign:'center',
-            fontWeight:'bold'
-          }}>
+            color: '#fff',
+            textAlign: 'center',
+            fontWeight: 'bold',
+          }}
+        >
           {loading ? 'Entrando...' : 'Entrar'}
         </Text>
-
       </TouchableOpacity>
-
     </View>
   );
 }
