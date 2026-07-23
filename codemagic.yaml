@@ -6,6 +6,9 @@ workflows:
     environment:
       node: 20
       java: 17
+      vars:
+        NODE_ENV: production
+        EXPO_NO_TELEMETRY: "1"
 
     scripts:
       - name: Instalar dependências
@@ -28,13 +31,18 @@ workflows:
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
 
-      - name: Gerar APK Android
+      - name: Limpar build Android
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew clean
+
+      - name: Gerar APK Release
+        script: |
+          cd android
+          ./gradlew assembleRelease
 
     artifacts:
-      - android/app/build/outputs/apk/debug/app-debug.apk
+      - android/app/build/outputs/apk/release/app-release.apk
       - android/app/build/outputs/**/*.apk
       - android/app/build/reports/**
