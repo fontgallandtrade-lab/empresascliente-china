@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.chamabebidas.chinafastcliente"
+      "package": "com.chamabebidas.chinafastcliente",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",
