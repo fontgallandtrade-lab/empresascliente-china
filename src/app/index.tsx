@@ -1,98 +1,122 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { router } from 'expo-router';
+import {
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B1F3A" />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <View style={styles.header}>
+        <Text style={styles.logo}>ChinaFast</Text>
+        <Text style={styles.subtitle}>Logística regional rápida e segura</Text>
+      </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+      <View style={styles.content}>
+        <Text style={styles.title}>Envie para toda a região</Text>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <Text style={styles.description}>
+          Solicite entregas locais e intermunicipais para documentos,
+          encomendas, peças, produtos e muito mais.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => router.push('/login')}
+        >
+          <Text style={styles.primaryButtonText}>Entrar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push('/cadastro')}
+        >
+          <Text style={styles.secondaryButtonText}>Criar conta</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.footer}>Pessoa física e empresa em um só aplicativo</Text>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#F5F7FA',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  header: {
+    backgroundColor: '#0B1F3A',
+    paddingHorizontal: 28,
+    paddingTop: 72,
+    paddingBottom: 52,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    color: '#FFFFFF',
+    fontSize: 38,
+    fontWeight: '800',
+  },
+  subtitle: {
+    color: '#D0D5DD',
+    fontSize: 16,
+    marginTop: 8,
+  },
+  content: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    paddingHorizontal: 28,
+    paddingTop: 48,
   },
   title: {
+    color: '#172033',
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 38,
+  },
+  description: {
+    color: '#667085',
+    fontSize: 16,
+    lineHeight: 25,
+    marginTop: 18,
+    marginBottom: 38,
+  },
+  primaryButton: {
+    backgroundColor: '#F59E0B',
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    height: 56,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#0B1F3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+  },
+  secondaryButtonText: {
+    color: '#0B1F3A',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  footer: {
+    color: '#98A2B3',
+    fontSize: 13,
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingBottom: 24,
   },
 });
