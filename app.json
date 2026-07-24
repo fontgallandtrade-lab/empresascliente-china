@@ -18,8 +18,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.chamabebidas.chinafastcliente",
-      "usesCleartextTraffic": true
+      "package": "com.chamabebidas.chinafastcliente"
     },
     "web": {
       "output": "static",
@@ -36,7 +35,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-build-properties"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
