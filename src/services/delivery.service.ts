@@ -13,6 +13,8 @@ export type AddressPayload = {
   state: string;
   postal_code?: string;
   reference_point?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type DeliveryPayload = {
@@ -66,6 +68,27 @@ export type QuoteResponse = {
   quote: QuoteResult;
 };
 
+export type RouteResult = {
+  pickup: {
+    latitude: number;
+    longitude: number;
+    display_name: string;
+  };
+  destination: {
+    latitude: number;
+    longitude: number;
+    display_name: string;
+  };
+  route_distance_km: number;
+  estimated_duration_minutes: number;
+};
+
+export type RouteResponse = {
+  success: boolean;
+  message: string;
+  route: RouteResult;
+};
+
 export type CreateDeliveryResponse = {
   success: boolean;
   message: string;
@@ -89,6 +112,24 @@ async function authHeaders() {
   return {
     Authorization: `Bearer ${token}`,
   };
+}
+
+export async function calculateAddressRoute(
+  pickup: AddressPayload,
+  destination: AddressPayload,
+): Promise<RouteResponse> {
+  const response = await api.post<RouteResponse>(
+    '/routes/calculate',
+    {
+      pickup,
+      destination,
+    },
+    {
+      headers: await authHeaders(),
+    },
+  );
+
+  return response.data;
 }
 
 export async function calculateQuote(

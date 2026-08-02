@@ -17,10 +17,12 @@ import {
 } from 'react-native';
 
 import {
+  calculateAddressRoute,
   calculateQuote,
   createDelivery,
   type DeliveryPayload,
   type QuoteResult,
+  type RouteResult,
 } from '../services/delivery.service';
 
 type PackageType = DeliveryPayload['package_type'];
@@ -190,12 +192,6 @@ export default function NovaEntregaScreen() {
   const [declaredValue, setDeclaredValue] =
     useState('');
 
-  const [routeDistance, setRouteDistance] =
-    useState('');
-
-  const [estimatedDuration, setEstimatedDuration] =
-    useState('');
-
   const [tollFee, setTollFee] =
     useState('0');
 
@@ -221,6 +217,9 @@ export default function NovaEntregaScreen() {
     setSignatureRequired,
   ] = useState(false);
 
+  const [routeResult, setRouteResult] =
+    useState<RouteResult | null>(null);
+
   const [quote, setQuote] =
     useState<QuoteResult | null>(null);
 
@@ -239,6 +238,7 @@ export default function NovaEntregaScreen() {
       [field]: value,
     }));
 
+    setRouteResult(null);
     setQuote(null);
   }
 
@@ -251,6 +251,7 @@ export default function NovaEntregaScreen() {
       [field]: value,
     }));
 
+    setRouteResult(null);
     setQuote(null);
   }
 
@@ -277,7 +278,9 @@ export default function NovaEntregaScreen() {
     return true;
   }
 
-  function buildPayload(): DeliveryPayload | null {
+  function buildPayload(
+    route: RouteResult,
+  ): DeliveryPayload | null {
     if (!validateAddress(pickup, 'coleta')) {
       return null;
     }
@@ -285,24 +288,6 @@ export default function NovaEntregaScreen() {
     if (!validateAddress(destination, 'entrega')) {
       return null;
     }
-
-    const distance =
-      numericValue(routeDistance);
-
-    if (
-      !Number.isFinite(distance) ||
-      distance <= 0
-    ) {
-      Alert.alert(
-        'Distância inválida',
-        'Informe a distância de ida da rota em quilômetros.',
-      );
-
-      return null;
-    }
-
-    const duration =
-      numericValue(estimatedDuration);
 
     return {
       pickup: {
@@ -325,6 +310,8 @@ export default function NovaEntregaScreen() {
           pickup.postal_code.trim(),
         reference_point:
           pickup.reference_point.trim(),
+        latitude: route.pickup.latitude,
+        longitude: route.pickup.longitude,
       },
 
       destination: {
@@ -351,6 +338,10 @@ export default function NovaEntregaScreen() {
           destination.postal_code.trim(),
         reference_point:
           destination.reference_point.trim(),
+        latitude:
+          route.destination.latitude,
+        longitude:
+          route.destination.longitude,
       },
 
       package_type: packageType,
@@ -371,11 +362,10 @@ export default function NovaEntregaScreen() {
       signature_required:
         signatureRequired,
       service_type: serviceType,
-      route_distance_km: distance,
+      route_distance_km:
+        route.route_distance_km,
       estimated_duration_minutes:
-        duration > 0
-          ? duration
-          : undefined,
+        route.estimated_duration_minutes,
       toll_fee:
         tollFee
           ? numericValue(tollFee)
@@ -388,27 +378,89 @@ export default function NovaEntregaScreen() {
   }
 
   async function handleQuote() {
-    const payload = buildPayload();
+    if (!validateAddress(pickup, 'coleta')) {
+      return;
+    }
 
-    if (!payload) {
+    if (!validateAddress(destination, 'entrega')) {
       return;
     }
 
     try {
       setLoadingQuote(true);
+      setQuote(null);
+      setRouteResult(null);
 
-      const response =
+      const routeResponse =
+        await calculateAddressRoute(
+          {
+            label: 'Coleta',
+            recipient_name:
+              pickup.recipient_name.trim(),
+            recipient_phone:
+              pickup.recipient_phone.trim(),
+            street: pickup.street.trim(),
+            number: pickup.number.trim(),
+            complement:
+              pickup.complement.trim(),
+            neighborhood:
+              pickup.neighborhood.trim(),
+            city: pickup.city.trim(),
+            state:
+              pickup.state.trim().toUpperCase() ||
+              'SP',
+            postal_code:
+              pickup.postal_code.trim(),
+            reference_point:
+              pickup.reference_point.trim(),
+          },
+          {
+            label: 'Entrega',
+            recipient_name:
+              destination.recipient_name.trim(),
+            recipient_phone:
+              destination.recipient_phone.trim(),
+            street:
+              destination.street.trim(),
+            number:
+              destination.number.trim(),
+            complement:
+              destination.complement.trim(),
+            neighborhood:
+              destination.neighborhood.trim(),
+            city:
+              destination.city.trim(),
+            state:
+              destination.state
+                .trim()
+                .toUpperCase() || 'SP',
+            postal_code:
+              destination.postal_code.trim(),
+            reference_point:
+              destination.reference_point.trim(),
+          },
+        );
+
+      const route = routeResponse.route;
+      const payload = buildPayload(route);
+
+      if (!payload) {
+        return;
+      }
+
+      const quoteResponse =
         await calculateQuote(payload);
 
-      setQuote(response.quote);
+      setRouteResult(route);
+      setQuote(quoteResponse.quote);
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        'Não foi possível calcular o valor.';
+        'Não foi possível calcular a rota e o valor.';
 
       Alert.alert(
-        'Erro na cotação',
+        'Erro no cálculo',
         message,
       );
     } finally {
@@ -417,7 +469,17 @@ export default function NovaEntregaScreen() {
   }
 
   async function handleCreate() {
-    const payload = buildPayload();
+    if (!routeResult || !quote) {
+      Alert.alert(
+        'Calcule o valor',
+        'Calcule a rota e o valor antes de solicitar a entrega.',
+      );
+
+      return;
+    }
+
+    const payload =
+      buildPayload(routeResult);
 
     if (!payload) {
       return;
@@ -890,28 +952,16 @@ export default function NovaEntregaScreen() {
               🛣️ Rota e serviço
             </Text>
 
-            <InputField
-              label="Distância de ida (km)"
-              value={routeDistance}
-              onChangeText={value => {
-                setRouteDistance(value);
-                setQuote(null);
-              }}
-              keyboardType="decimal-pad"
-              placeholder="Ex.: 20"
-              required
-            />
+            <View style={styles.automaticRouteCard}>
+              <Text style={styles.automaticRouteTitle}>
+                Cálculo automático da rota
+              </Text>
 
-            <InputField
-              label="Tempo estimado (minutos)"
-              value={estimatedDuration}
-              onChangeText={value => {
-                setEstimatedDuration(value);
-                setQuote(null);
-              }}
-              keyboardType="numeric"
-              placeholder="Ex.: 35"
-            />
+              <Text style={styles.automaticRouteText}>
+                A distância e o tempo serão calculados
+                automaticamente usando os endereços informados.
+              </Text>
+            </View>
 
             <InputField
               label="Pedágio"
@@ -1039,6 +1089,16 @@ export default function NovaEntregaScreen() {
 
                 <Text style={styles.summaryValue}>
                   {quote.route_distance_km} km
+                </Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>
+                  Tempo estimado
+                </Text>
+
+                <Text style={styles.summaryValue}>
+                  {quote.estimated_duration_minutes || 0} min
                 </Text>
               </View>
 
@@ -1265,6 +1325,28 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontSize: 14,
     fontWeight: '700',
+  },
+
+  automaticRouteCard: {
+    backgroundColor: '#eef6ff',
+    borderColor: '#bfdbfe',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 15,
+    marginBottom: 18,
+  },
+
+  automaticRouteTitle: {
+    color: '#1d4ed8',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  automaticRouteText: {
+    color: '#475569',
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 6,
   },
 
   quoteButton: {
