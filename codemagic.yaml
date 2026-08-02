@@ -1,14 +1,12 @@
 workflows:
-  chinafast-android-apk:
-    name: ChinaFast Android APK
+  android-release:
+    name: ChinaFast Cliente Android
+
     max_build_duration: 60
 
     environment:
-      node: 20
+      node: 22
       java: 17
-      vars:
-        NODE_ENV: production
-        EXPO_NO_TELEMETRY: "1"
 
     scripts:
       - name: Instalar dependências
@@ -19,30 +17,23 @@ workflows:
         script: |
           npx tsc --noEmit
 
+      - name: Verificar Expo
+        script: |
+          npx expo-doctor
+
       - name: Gerar projeto Android
         script: |
-          npx expo prebuild \
-            --platform android \
-            --clean \
-            --no-install \
-            --non-interactive
+          EXPO_NO_GIT_STATUS=1 npx expo prebuild --platform android --clean --no-install
 
-      - name: Configurar Android SDK
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
-      - name: Limpar build Android
+      - name: Gerar APK release
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew clean
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Gerar APK Release
+      - name: Localizar APK
         script: |
-          cd android
-          ./gradlew assembleRelease
+          find android/app/build/outputs -type f -name "*.apk" -print
 
     artifacts:
-      - android/app/build/outputs/apk/release/app-release.apk
-      - android/app/build/outputs/**/*.apk
-      - android/app/build/reports/**
+      - android/app/build/outputs/apk/release/*.apk
