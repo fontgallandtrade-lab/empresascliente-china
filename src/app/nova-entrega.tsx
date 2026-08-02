@@ -1,27 +1,1127 @@
 import { router } from 'expo-router';
+import React, { useState } from 'react';
+
 import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 
+import {
+  calculateQuote,
+  createDelivery,
+  type DeliveryPayload,
+  type QuoteResult,
+} from '../services/delivery.service';
+
+type PackageType = DeliveryPayload['package_type'];
+type ServiceType = DeliveryPayload['service_type'];
+type PaymentMethod = DeliveryPayload['payment_method'];
+
+type AddressForm = {
+  recipient_name: string;
+  recipient_phone: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  reference_point: string;
+};
+
+const emptyAddress: AddressForm = {
+  recipient_name: '',
+  recipient_phone: '',
+  street: '',
+  number: '',
+  complement: '',
+  neighborhood: '',
+  city: '',
+  state: 'SP',
+  postal_code: '',
+  reference_point: '',
+};
+
+const packageOptions: Array<{
+  value: PackageType;
+  label: string;
+}> = [
+  { value: 'document', label: 'Documento' },
+  { value: 'food', label: 'Alimento' },
+  { value: 'medicine', label: 'Medicamento' },
+  { value: 'flowers', label: 'Flores' },
+  { value: 'auto_parts', label: 'Autopeças' },
+  { value: 'electronics', label: 'Eletrônicos' },
+  { value: 'market', label: 'Mercado' },
+  { value: 'box', label: 'Caixa' },
+  { value: 'other', label: 'Outro' },
+];
+
+function money(value: number): string {
+  return Number(value || 0).toLocaleString(
+    'pt-BR',
+    {
+      style: 'currency',
+      currency: 'BRL',
+    },
+  );
+}
+
+function numericValue(value: string): number {
+  return Number(
+    value
+      .replace(',', '.')
+      .replace(/[^\d.]/g, ''),
+  );
+}
+
+function cleanPhone(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 11);
+}
+
+function cleanPostalCode(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 8);
+}
+
+function InputField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = 'default',
+  multiline = false,
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?: 'default' | 'numeric' | 'phone-pad' | 'decimal-pad';
+  multiline?: boolean;
+  required?: boolean;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>
+        {label}
+        {required ? (
+          <Text style={styles.required}> *</Text>
+        ) : null}
+      </Text>
+
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="#9ca3af"
+        keyboardType={keyboardType}
+        multiline={multiline}
+        style={[
+          styles.input,
+          multiline && styles.textArea,
+        ]}
+      />
+    </View>
+  );
+}
+
+function ChoiceButton({
+  selected,
+  label,
+  onPress,
+}: {
+  selected: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
+      style={[
+        styles.choiceButton,
+        selected && styles.choiceButtonSelected,
+      ]}
+    >
+      <Text
+        style={[
+          styles.choiceText,
+          selected && styles.choiceTextSelected,
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function NovaEntregaScreen() {
+  const [pickup, setPickup] =
+    useState<AddressForm>({
+      ...emptyAddress,
+      recipient_name: 'Cliente Teste',
+    });
+
+  const [destination, setDestination] =
+    useState<AddressForm>({
+      ...emptyAddress,
+    });
+
+  const [packageType, setPackageType] =
+    useState<PackageType>('document');
+
+  const [packageDescription, setPackageDescription] =
+    useState('');
+
+  const [packageWeight, setPackageWeight] =
+    useState('');
+
+  const [declaredValue, setDeclaredValue] =
+    useState('');
+
+  const [routeDistance, setRouteDistance] =
+    useState('');
+
+  const [estimatedDuration, setEstimatedDuration] =
+    useState('');
+
+  const [tollFee, setTollFee] =
+    useState('0');
+
+  const [customerNotes, setCustomerNotes] =
+    useState('');
+
+  const [serviceType, setServiceType] =
+    useState<ServiceType>('normal');
+
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>('pix');
+
+  const [fragile, setFragile] =
+    useState(false);
+
+  const [
+    thermalBagRequired,
+    setThermalBagRequired,
+  ] = useState(false);
+
+  const [
+    signatureRequired,
+    setSignatureRequired,
+  ] = useState(false);
+
+  const [quote, setQuote] =
+    useState<QuoteResult | null>(null);
+
+  const [loadingQuote, setLoadingQuote] =
+    useState(false);
+
+  const [creating, setCreating] =
+    useState(false);
+
+  function updatePickup(
+    field: keyof AddressForm,
+    value: string,
+  ) {
+    setPickup(previous => ({
+      ...previous,
+      [field]: value,
+    }));
+
+    setQuote(null);
+  }
+
+  function updateDestination(
+    field: keyof AddressForm,
+    value: string,
+  ) {
+    setDestination(previous => ({
+      ...previous,
+      [field]: value,
+    }));
+
+    setQuote(null);
+  }
+
+  function validateAddress(
+    address: AddressForm,
+    type: string,
+  ): boolean {
+    if (
+      !address.recipient_name.trim() ||
+      !address.recipient_phone.trim() ||
+      !address.street.trim() ||
+      !address.number.trim() ||
+      !address.neighborhood.trim() ||
+      !address.city.trim()
+    ) {
+      Alert.alert(
+        'Dados incompletos',
+        `Preencha os campos obrigatórios do endereço de ${type}.`,
+      );
+
+      return false;
+    }
+
+    return true;
+  }
+
+  function buildPayload(): DeliveryPayload | null {
+    if (!validateAddress(pickup, 'coleta')) {
+      return null;
+    }
+
+    if (!validateAddress(destination, 'entrega')) {
+      return null;
+    }
+
+    const distance =
+      numericValue(routeDistance);
+
+    if (
+      !Number.isFinite(distance) ||
+      distance <= 0
+    ) {
+      Alert.alert(
+        'Distância inválida',
+        'Informe a distância de ida da rota em quilômetros.',
+      );
+
+      return null;
+    }
+
+    const duration =
+      numericValue(estimatedDuration);
+
+    return {
+      pickup: {
+        label: 'Coleta',
+        recipient_name:
+          pickup.recipient_name.trim(),
+        recipient_phone:
+          pickup.recipient_phone.trim(),
+        street: pickup.street.trim(),
+        number: pickup.number.trim(),
+        complement:
+          pickup.complement.trim(),
+        neighborhood:
+          pickup.neighborhood.trim(),
+        city: pickup.city.trim(),
+        state:
+          pickup.state.trim().toUpperCase() ||
+          'SP',
+        postal_code:
+          pickup.postal_code.trim(),
+        reference_point:
+          pickup.reference_point.trim(),
+      },
+
+      destination: {
+        label: 'Entrega',
+        recipient_name:
+          destination.recipient_name.trim(),
+        recipient_phone:
+          destination.recipient_phone.trim(),
+        street:
+          destination.street.trim(),
+        number:
+          destination.number.trim(),
+        complement:
+          destination.complement.trim(),
+        neighborhood:
+          destination.neighborhood.trim(),
+        city:
+          destination.city.trim(),
+        state:
+          destination.state
+            .trim()
+            .toUpperCase() || 'SP',
+        postal_code:
+          destination.postal_code.trim(),
+        reference_point:
+          destination.reference_point.trim(),
+      },
+
+      package_type: packageType,
+      package_description:
+        packageDescription.trim() ||
+        undefined,
+      package_weight_kg:
+        packageWeight
+          ? numericValue(packageWeight)
+          : undefined,
+      declared_value:
+        declaredValue
+          ? numericValue(declaredValue)
+          : 0,
+      fragile,
+      thermal_bag_required:
+        thermalBagRequired,
+      signature_required:
+        signatureRequired,
+      service_type: serviceType,
+      route_distance_km: distance,
+      estimated_duration_minutes:
+        duration > 0
+          ? duration
+          : undefined,
+      toll_fee:
+        tollFee
+          ? numericValue(tollFee)
+          : 0,
+      payment_method: paymentMethod,
+      customer_notes:
+        customerNotes.trim() ||
+        undefined,
+    };
+  }
+
+  async function handleQuote() {
+    const payload = buildPayload();
+
+    if (!payload) {
+      return;
+    }
+
+    try {
+      setLoadingQuote(true);
+
+      const response =
+        await calculateQuote(payload);
+
+      setQuote(response.quote);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Não foi possível calcular o valor.';
+
+      Alert.alert(
+        'Erro na cotação',
+        message,
+      );
+    } finally {
+      setLoadingQuote(false);
+    }
+  }
+
+  async function handleCreate() {
+    const payload = buildPayload();
+
+    if (!payload) {
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      const response =
+        await createDelivery(payload);
+
+      Alert.alert(
+        'Entrega solicitada!',
+        [
+          `Pedido: ${response.delivery.public_code}`,
+          '',
+          `Código de retirada: ${response.delivery.pickup_code}`,
+          `Código de entrega: ${response.delivery.delivery_code}`,
+          '',
+          `Total: ${money(response.delivery.quote.total_price)}`,
+        ].join('\n'),
+        [
+          {
+            text: 'OK',
+            onPress: () =>
+              router.replace('/dashboard' as any),
+          },
+        ],
+      );
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Não foi possível criar a entrega.';
+
+      Alert.alert(
+        'Erro ao solicitar entrega',
+        message,
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Voltar</Text>
-        </TouchableOpacity>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : undefined
+        }
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+          >
+            <Text style={styles.back}>
+              ← Voltar
+            </Text>
+          </TouchableOpacity>
 
-        <Text style={styles.title}>Solicitar entrega</Text>
+          <Text style={styles.title}>
+            Solicitar entrega
+          </Text>
 
-        <Text style={styles.description}>
-          Nesta tela vamos cadastrar o endereço de coleta, destino,
-          pacote e calcular o valor da corrida.
-        </Text>
-      </View>
+          <Text style={styles.description}>
+            Preencha os dados da coleta, da entrega
+            e da encomenda.
+          </Text>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              📍 Local de coleta
+            </Text>
+
+            <InputField
+              label="Nome do responsável"
+              value={pickup.recipient_name}
+              onChangeText={value =>
+                updatePickup(
+                  'recipient_name',
+                  value,
+                )
+              }
+              required
+            />
+
+            <InputField
+              label="Telefone"
+              value={pickup.recipient_phone}
+              onChangeText={value =>
+                updatePickup(
+                  'recipient_phone',
+                  cleanPhone(value),
+                )
+              }
+              keyboardType="phone-pad"
+              placeholder="15999999999"
+              required
+            />
+
+            <InputField
+              label="Rua"
+              value={pickup.street}
+              onChangeText={value =>
+                updatePickup('street', value)
+              }
+              required
+            />
+
+            <View style={styles.row}>
+              <View style={styles.rowSmall}>
+                <InputField
+                  label="Número"
+                  value={pickup.number}
+                  onChangeText={value =>
+                    updatePickup(
+                      'number',
+                      value,
+                    )
+                  }
+                  required
+                />
+              </View>
+
+              <View style={styles.rowLarge}>
+                <InputField
+                  label="Complemento"
+                  value={pickup.complement}
+                  onChangeText={value =>
+                    updatePickup(
+                      'complement',
+                      value,
+                    )
+                  }
+                />
+              </View>
+            </View>
+
+            <InputField
+              label="Bairro"
+              value={pickup.neighborhood}
+              onChangeText={value =>
+                updatePickup(
+                  'neighborhood',
+                  value,
+                )
+              }
+              required
+            />
+
+            <View style={styles.row}>
+              <View style={styles.rowLarge}>
+                <InputField
+                  label="Cidade"
+                  value={pickup.city}
+                  onChangeText={value =>
+                    updatePickup('city', value)
+                  }
+                  required
+                />
+              </View>
+
+              <View style={styles.stateField}>
+                <InputField
+                  label="UF"
+                  value={pickup.state}
+                  onChangeText={value =>
+                    updatePickup(
+                      'state',
+                      value.slice(0, 2),
+                    )
+                  }
+                  required
+                />
+              </View>
+            </View>
+
+            <InputField
+              label="CEP"
+              value={pickup.postal_code}
+              onChangeText={value =>
+                updatePickup(
+                  'postal_code',
+                  cleanPostalCode(value),
+                )
+              }
+              keyboardType="numeric"
+            />
+
+            <InputField
+              label="Ponto de referência"
+              value={pickup.reference_point}
+              onChangeText={value =>
+                updatePickup(
+                  'reference_point',
+                  value,
+                )
+              }
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              🏁 Local de entrega
+            </Text>
+
+            <InputField
+              label="Nome do destinatário"
+              value={
+                destination.recipient_name
+              }
+              onChangeText={value =>
+                updateDestination(
+                  'recipient_name',
+                  value,
+                )
+              }
+              required
+            />
+
+            <InputField
+              label="Telefone"
+              value={
+                destination.recipient_phone
+              }
+              onChangeText={value =>
+                updateDestination(
+                  'recipient_phone',
+                  cleanPhone(value),
+                )
+              }
+              keyboardType="phone-pad"
+              placeholder="15999999999"
+              required
+            />
+
+            <InputField
+              label="Rua"
+              value={destination.street}
+              onChangeText={value =>
+                updateDestination(
+                  'street',
+                  value,
+                )
+              }
+              required
+            />
+
+            <View style={styles.row}>
+              <View style={styles.rowSmall}>
+                <InputField
+                  label="Número"
+                  value={destination.number}
+                  onChangeText={value =>
+                    updateDestination(
+                      'number',
+                      value,
+                    )
+                  }
+                  required
+                />
+              </View>
+
+              <View style={styles.rowLarge}>
+                <InputField
+                  label="Complemento"
+                  value={
+                    destination.complement
+                  }
+                  onChangeText={value =>
+                    updateDestination(
+                      'complement',
+                      value,
+                    )
+                  }
+                />
+              </View>
+            </View>
+
+            <InputField
+              label="Bairro"
+              value={
+                destination.neighborhood
+              }
+              onChangeText={value =>
+                updateDestination(
+                  'neighborhood',
+                  value,
+                )
+              }
+              required
+            />
+
+            <View style={styles.row}>
+              <View style={styles.rowLarge}>
+                <InputField
+                  label="Cidade"
+                  value={destination.city}
+                  onChangeText={value =>
+                    updateDestination(
+                      'city',
+                      value,
+                    )
+                  }
+                  required
+                />
+              </View>
+
+              <View style={styles.stateField}>
+                <InputField
+                  label="UF"
+                  value={destination.state}
+                  onChangeText={value =>
+                    updateDestination(
+                      'state',
+                      value.slice(0, 2),
+                    )
+                  }
+                  required
+                />
+              </View>
+            </View>
+
+            <InputField
+              label="CEP"
+              value={
+                destination.postal_code
+              }
+              onChangeText={value =>
+                updateDestination(
+                  'postal_code',
+                  cleanPostalCode(value),
+                )
+              }
+              keyboardType="numeric"
+            />
+
+            <InputField
+              label="Ponto de referência"
+              value={
+                destination.reference_point
+              }
+              onChangeText={value =>
+                updateDestination(
+                  'reference_point',
+                  value,
+                )
+              }
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              📦 Encomenda
+            </Text>
+
+            <Text style={styles.label}>
+              Tipo da encomenda
+            </Text>
+
+            <View style={styles.choiceGrid}>
+              {packageOptions.map(option => (
+                <ChoiceButton
+                  key={option.value}
+                  label={option.label}
+                  selected={
+                    packageType === option.value
+                  }
+                  onPress={() => {
+                    setPackageType(
+                      option.value,
+                    );
+                    setQuote(null);
+                  }}
+                />
+              ))}
+            </View>
+
+            <InputField
+              label="Descrição"
+              value={packageDescription}
+              onChangeText={value => {
+                setPackageDescription(value);
+                setQuote(null);
+              }}
+              placeholder="Ex.: documentos em envelope"
+              multiline
+            />
+
+            <View style={styles.row}>
+              <View style={styles.rowLarge}>
+                <InputField
+                  label="Peso aproximado (kg)"
+                  value={packageWeight}
+                  onChangeText={value => {
+                    setPackageWeight(value);
+                    setQuote(null);
+                  }}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.rowLarge}>
+                <InputField
+                  label="Valor declarado"
+                  value={declaredValue}
+                  onChangeText={value => {
+                    setDeclaredValue(value);
+                    setQuote(null);
+                  }}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>
+                Encomenda frágil
+              </Text>
+
+              <Switch
+                value={fragile}
+                onValueChange={value => {
+                  setFragile(value);
+                  setQuote(null);
+                }}
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>
+                Precisa de bolsa térmica
+              </Text>
+
+              <Switch
+                value={thermalBagRequired}
+                onValueChange={value => {
+                  setThermalBagRequired(
+                    value,
+                  );
+                  setQuote(null);
+                }}
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>
+                Exigir assinatura
+              </Text>
+
+              <Switch
+                value={signatureRequired}
+                onValueChange={value => {
+                  setSignatureRequired(value);
+                  setQuote(null);
+                }}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              🛣️ Rota e serviço
+            </Text>
+
+            <InputField
+              label="Distância de ida (km)"
+              value={routeDistance}
+              onChangeText={value => {
+                setRouteDistance(value);
+                setQuote(null);
+              }}
+              keyboardType="decimal-pad"
+              placeholder="Ex.: 20"
+              required
+            />
+
+            <InputField
+              label="Tempo estimado (minutos)"
+              value={estimatedDuration}
+              onChangeText={value => {
+                setEstimatedDuration(value);
+                setQuote(null);
+              }}
+              keyboardType="numeric"
+              placeholder="Ex.: 35"
+            />
+
+            <InputField
+              label="Pedágio"
+              value={tollFee}
+              onChangeText={value => {
+                setTollFee(value);
+                setQuote(null);
+              }}
+              keyboardType="decimal-pad"
+              placeholder="0"
+            />
+
+            <Text style={styles.label}>
+              Tipo de serviço
+            </Text>
+
+            <View style={styles.choiceGrid}>
+              <ChoiceButton
+                label="Normal"
+                selected={
+                  serviceType === 'normal'
+                }
+                onPress={() => {
+                  setServiceType('normal');
+                  setQuote(null);
+                }}
+              />
+
+              <ChoiceButton
+                label="Expresso"
+                selected={
+                  serviceType === 'express'
+                }
+                onPress={() => {
+                  setServiceType('express');
+                  setQuote(null);
+                }}
+              />
+            </View>
+
+            <Text style={styles.label}>
+              Forma de pagamento
+            </Text>
+
+            <View style={styles.choiceGrid}>
+              <ChoiceButton
+                label="Pix"
+                selected={
+                  paymentMethod === 'pix'
+                }
+                onPress={() =>
+                  setPaymentMethod('pix')
+                }
+              />
+
+              <ChoiceButton
+                label="Cartão"
+                selected={
+                  paymentMethod === 'card'
+                }
+                onPress={() =>
+                  setPaymentMethod('card')
+                }
+              />
+
+              <ChoiceButton
+                label="Dinheiro"
+                selected={
+                  paymentMethod === 'cash'
+                }
+                onPress={() =>
+                  setPaymentMethod('cash')
+                }
+              />
+            </View>
+
+            <InputField
+              label="Observações"
+              value={customerNotes}
+              onChangeText={setCustomerNotes}
+              multiline
+              placeholder="Informações para o entregador"
+            />
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleQuote}
+            disabled={loadingQuote || creating}
+            style={styles.quoteButton}
+          >
+            {loadingQuote ? (
+              <ActivityIndicator
+                color="#f26522"
+              />
+            ) : (
+              <Text style={styles.quoteButtonText}>
+                CALCULAR VALOR
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {quote ? (
+            <View style={styles.quoteCard}>
+              <Text style={styles.quoteTitle}>
+                Resumo da corrida
+              </Text>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>
+                  Tipo
+                </Text>
+
+                <Text style={styles.summaryValue}>
+                  {quote.same_city
+                    ? 'Urbana'
+                    : 'Intermunicipal'}
+                </Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>
+                  Distância de ida
+                </Text>
+
+                <Text style={styles.summaryValue}>
+                  {quote.route_distance_km} km
+                </Text>
+              </View>
+
+              {!quote.same_city ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>
+                    Ida e retorno
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {quote.billable_distance_km} km
+                  </Text>
+                </View>
+              ) : null}
+
+              {quote.base_fee > 0 ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>
+                    Taxa-base
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {money(quote.base_fee)}
+                  </Text>
+                </View>
+              ) : null}
+
+              {quote.urgency_fee > 0 ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>
+                    Taxa de urgência
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {money(quote.urgency_fee)}
+                  </Text>
+                </View>
+              ) : null}
+
+              {quote.night_fee > 0 ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>
+                    Adicional noturno
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {money(quote.night_fee)}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  Total
+                </Text>
+
+                <Text style={styles.totalValue}>
+                  {money(quote.total_price)}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleCreate}
+                disabled={creating}
+                style={styles.createButton}
+              >
+                {creating ? (
+                  <ActivityIndicator
+                    color="#ffffff"
+                  />
+                ) : (
+                  <Text
+                    style={styles.createButtonText}
+                  >
+                    CONFIRMAR E SOLICITAR ENTREGA
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -33,26 +1133,222 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: 24,
+    padding: 20,
+    paddingBottom: 60,
   },
 
   back: {
     color: '#f26522',
     fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 30,
+    fontWeight: '800',
+    marginBottom: 22,
   },
 
   title: {
     color: '#17202a',
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
   },
 
   description: {
     color: '#6b7280',
-    fontSize: 16,
-    lineHeight: 24,
-    marginTop: 14,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 8,
+    marginBottom: 22,
+  },
+
+  section: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+  },
+
+  sectionTitle: {
+    color: '#17202a',
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 18,
+  },
+
+  field: {
+    marginBottom: 15,
+  },
+
+  label: {
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 7,
+  },
+
+  required: {
+    color: '#dc2626',
+  },
+
+  input: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 13,
+    backgroundColor: '#fafafa',
+    color: '#17202a',
+    fontSize: 15,
+    paddingHorizontal: 14,
+  },
+
+  textArea: {
+    minHeight: 95,
+    paddingTop: 14,
+    textAlignVertical: 'top',
+  },
+
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  rowSmall: {
+    flex: 0.7,
+  },
+
+  rowLarge: {
+    flex: 1.3,
+  },
+
+  stateField: {
+    flex: 0.5,
+  },
+
+  choiceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+    marginBottom: 17,
+  },
+
+  choiceButton: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+
+  choiceButtonSelected: {
+    borderColor: '#f26522',
+    backgroundColor: '#fff0e7',
+  },
+
+  choiceText: {
+    color: '#4b5563',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  choiceTextSelected: {
+    color: '#d95416',
+  },
+
+  switchRow: {
+    minHeight: 52,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  switchLabel: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  quoteButton: {
+    minHeight: 58,
+    borderWidth: 2,
+    borderColor: '#f26522',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+
+  quoteButtonText: {
+    color: '#f26522',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  quoteCard: {
+    backgroundColor: '#17202a',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 18,
+  },
+
+  quoteTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 18,
+  },
+
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 11,
+  },
+
+  summaryLabel: {
+    color: '#d1d5db',
+    fontSize: 14,
+  },
+
+  summaryValue: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 17,
+  },
+
+  totalLabel: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+
+  totalValue: {
+    color: '#f97316',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+
+  createButton: {
+    minHeight: 60,
+    borderRadius: 15,
+    backgroundColor: '#f26522',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 22,
+  },
+
+  createButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '900',
+    textAlign: 'center',
   },
 });
