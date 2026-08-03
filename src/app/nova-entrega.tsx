@@ -491,24 +491,20 @@ export default function NovaEntregaScreen() {
       const response =
         await createDelivery(payload);
 
-      Alert.alert(
-        'Entrega solicitada!',
-        [
-          `Pedido: ${response.delivery.public_code}`,
-          '',
-          `Código de retirada: ${response.delivery.pickup_code}`,
-          `Código de entrega: ${response.delivery.delivery_code}`,
-          '',
-          `Total: ${money(response.delivery.quote.total_price)}`,
-        ].join('\n'),
-        [
-          {
-            text: 'OK',
-            onPress: () =>
-              router.replace('/dashboard' as any),
-          },
-        ],
-      );
+      router.replace({
+        pathname: '/entrega-criada',
+        params: {
+          publicCode:
+            response.delivery.public_code,
+          pickupCode:
+            response.delivery.pickup_code,
+          deliveryCode:
+            response.delivery.delivery_code,
+          total: money(
+            response.delivery.quote.total_price
+          ),
+        },
+      } as any);
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
