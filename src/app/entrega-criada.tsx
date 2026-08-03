@@ -59,7 +59,7 @@ export default function EntregaCriadaScreen() {
           </Text>
 
           <Text style={styles.help}>
-            Informe este código ao entregador no momento da coleta.
+            Informe este código ao entregador somente quando ele chegar para retirar a encomenda.
           </Text>
         </View>
 
@@ -73,7 +73,7 @@ export default function EntregaCriadaScreen() {
           </Text>
 
           <Text style={styles.help}>
-            Informe este código ao entregador somente ao receber a encomenda.
+            Envie este código à pessoa que receberá a encomenda. Ela deve informar ao entregador somente depois de receber o pacote.
           </Text>
         </View>
 
