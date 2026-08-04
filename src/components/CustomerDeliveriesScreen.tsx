@@ -404,6 +404,32 @@ export default function CustomerDeliveriesScreen({
                 </View>
 
                 {mode === 'active' && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.trackingButton}
+                    onPress={() =>
+                      router.push({
+                        pathname:
+                          '/rastrear-entrega',
+                        params: {
+                          id: String(
+                            delivery.id,
+                          ),
+                        },
+                      } as any)
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.trackingButtonText
+                      }
+                    >
+                      ACOMPANHAR NO MAPA
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {mode === 'active' && (
                   <View
                     style={
                       styles.progressContainer
@@ -642,6 +668,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     marginTop: 2,
+  },
+  trackingButton: {
+    minHeight: 52,
+    borderRadius: 15,
+    backgroundColor: '#17202a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 17,
+  },
+  trackingButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
   },
   progressContainer: {
     backgroundColor: '#eef9f3',

@@ -204,3 +204,39 @@ Promise<CustomerDelivery[]> {
 
   return response.data.deliveries;
 }
+
+export type TrackingDelivery = CustomerDelivery & {
+  pickup_state?: string | null;
+  pickup_latitude?: number | string | null;
+  pickup_longitude?: number | string | null;
+
+  destination_state?: string | null;
+  destination_latitude?: number | string | null;
+  destination_longitude?: number | string | null;
+
+  driver_id?: number | null;
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  driver_latitude?: number | string | null;
+  driver_longitude?: number | string | null;
+  driver_last_location_at?: string | null;
+};
+
+type DeliveryDetailsResponse = {
+  success: boolean;
+  delivery: TrackingDelivery;
+};
+
+export async function getDeliveryDetails(
+  deliveryId: number,
+): Promise<TrackingDelivery> {
+  const response =
+    await api.get<DeliveryDetailsResponse>(
+      `/deliveries/${deliveryId}`,
+      {
+        headers: await authHeaders(),
+      },
+    );
+
+  return response.data.delivery;
+}
