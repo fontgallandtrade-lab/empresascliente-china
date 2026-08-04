@@ -160,3 +160,47 @@ export async function createDelivery(
 
   return response.data;
 }
+
+export type CustomerDelivery = {
+  id: number;
+  public_code: string;
+  package_type: string;
+  service_type: string;
+  route_distance_km: number | string;
+  billable_distance_km: number | string;
+  total_price: number | string;
+  driver_amount: number | string;
+  payment_method: string;
+  payment_status: string;
+  status: string;
+  created_at: string;
+
+  pickup_street: string;
+  pickup_number: string;
+  pickup_neighborhood: string;
+  pickup_city: string;
+
+  destination_street: string;
+  destination_number: string;
+  destination_neighborhood: string;
+  destination_city: string;
+};
+
+export type MyDeliveriesResponse = {
+  success: boolean;
+  total: number;
+  deliveries: CustomerDelivery[];
+};
+
+export async function getMyDeliveries():
+Promise<CustomerDelivery[]> {
+  const response =
+    await api.get<MyDeliveriesResponse>(
+      '/deliveries/my',
+      {
+        headers: await authHeaders(),
+      },
+    );
+
+  return response.data.deliveries;
+}

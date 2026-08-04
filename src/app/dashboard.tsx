@@ -25,6 +25,18 @@ export default function DashboardScreen() {
     router.push('/nova-entrega' as any);
   }
 
+  function handleAcompanhar() {
+    router.push('/acompanhar' as any);
+  }
+
+  function handleHistorico() {
+    router.push('/historico' as any);
+  }
+
+  function handlePerfil() {
+    router.push('/perfil' as any);
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -84,7 +96,10 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={handleAcompanhar}
+          >
             <Text style={styles.cardIcon}>🛵</Text>
             <Text style={styles.cardTitle}>Acompanhar</Text>
             <Text style={styles.cardDescription}>
@@ -92,7 +107,10 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={handleHistorico}
+          >
             <Text style={styles.cardIcon}>🧾</Text>
             <Text style={styles.cardTitle}>Histórico</Text>
             <Text style={styles.cardDescription}>
@@ -100,7 +118,10 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={handlePerfil}
+          >
             <Text style={styles.cardIcon}>👤</Text>
             <Text style={styles.cardTitle}>Meu perfil</Text>
             <Text style={styles.cardDescription}>
