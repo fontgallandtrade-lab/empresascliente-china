@@ -451,8 +451,15 @@ export default function NovaEntregaScreen() {
       const quoteResponse =
         await calculateQuote(payload);
 
-      setRouteResult(route);
-      setQuote(quoteResponse.quote);
+      router.push({
+        pathname: '/resumo-entrega',
+        params: {
+          payload: JSON.stringify(payload),
+          quote: JSON.stringify(
+            quoteResponse.quote,
+          ),
+        },
+      } as any);
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
