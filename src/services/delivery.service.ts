@@ -164,6 +164,8 @@ export async function createDelivery(
 export type CustomerDelivery = {
   id: number;
   public_code: string;
+  pickup_code?: string | null;
+  delivery_code?: string | null;
   package_type: string;
   service_type: string;
   route_distance_km: number | string;

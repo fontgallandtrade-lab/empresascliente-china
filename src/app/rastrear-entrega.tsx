@@ -402,59 +402,26 @@ export default function RastrearEntregaScreen() {
         </View>
       </View>
 
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={initialRegion}
-        showsCompass
-        showsTraffic
-        toolbarEnabled={false}
-      >
-        {pickupPosition && (
-          <Marker
-            coordinate={pickupPosition}
-            title="Local da coleta"
-            description={address(
-              delivery.pickup_street,
-              delivery.pickup_number,
-              delivery.pickup_neighborhood,
-              delivery.pickup_city,
-            )}
-            pinColor="#169b62"
-          />
-        )}
+      <View style={styles.mapTest}>
+        <Text style={styles.mapTestIcon}>
+          🗺️
+        </Text>
 
-        {destinationPosition && (
-          <Marker
-            coordinate={destinationPosition}
-            title="Destino da entrega"
-            description={address(
-              delivery.destination_street,
-              delivery.destination_number,
-              delivery
-                .destination_neighborhood,
-              delivery.destination_city,
-            )}
-            pinColor="#f26522"
-          />
-        )}
+        <Text style={styles.mapTestTitle}>
+          Rastreamento conectado
+        </Text>
+
+        <Text style={styles.mapTestText}>
+          Aguardando configuração do mapa.
+        </Text>
 
         {driverPosition && (
-          <Marker
-            coordinate={driverPosition}
-            title="Entregador"
-            description="Localização atual"
-          >
-            <View style={styles.driverMarker}>
-              <Text
-                style={styles.driverMarkerIcon}
-              >
-                🛵
-              </Text>
-            </View>
-          </Marker>
+          <Text style={styles.mapTestCoordinates}>
+            {driverPosition.latitude},
+            {driverPosition.longitude}
+          </Text>
         )}
-      </MapView>
+      </View>
 
       <View style={styles.bottomCard}>
         <View style={styles.statusHeader}>
@@ -505,6 +472,44 @@ export default function RastrearEntregaScreen() {
             Última atualização: {lastUpdate}
           </Text>
         )}
+
+        <View style={styles.securityCodesCard}>
+          <Text style={styles.securityCodesTitle}>
+            Códigos de segurança
+          </Text>
+
+          <View style={styles.securityCodesRow}>
+            <View style={styles.securityCodeItem}>
+              <Text style={styles.securityCodeLabel}>
+                RETIRADA
+              </Text>
+
+              <Text style={styles.securityCodeValue}>
+                {delivery.pickup_code || '------'}
+              </Text>
+
+              <Text style={styles.securityCodeHelp}>
+                Informe somente quando o entregador chegar para retirar.
+              </Text>
+            </View>
+
+            <View style={styles.securityCodeDivider} />
+
+            <View style={styles.securityCodeItem}>
+              <Text style={styles.securityCodeLabel}>
+                ENTREGA
+              </Text>
+
+              <Text style={styles.securityCodeValue}>
+                {delivery.delivery_code || '------'}
+              </Text>
+
+              <Text style={styles.securityCodeHelp}>
+                Envie este código para quem receberá a encomenda.
+              </Text>
+            </View>
+          </View>
+        </View>
 
         <View style={styles.routeSummary}>
           <View style={styles.routeItem}>
@@ -670,6 +675,33 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  mapTest: {
+    flex: 1,
+    backgroundColor: '#e9eef4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  mapTestIcon: {
+    fontSize: 54,
+  },
+  mapTestTitle: {
+    color: '#17202a',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 14,
+  },
+  mapTestText: {
+    color: '#6b7280',
+    fontSize: 14,
+    marginTop: 7,
+  },
+  mapTestCoordinates: {
+    color: '#f26522',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 12,
+  },
   driverMarker: {
     width: 52,
     height: 52,
@@ -764,6 +796,47 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 11,
     marginTop: 8,
+  },
+  securityCodesCard: {
+    backgroundColor: '#f7f8fa',
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 18,
+  },
+  securityCodesTitle: {
+    color: '#17202a',
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 14,
+  },
+  securityCodesRow: {
+    flexDirection: 'row',
+  },
+  securityCodeItem: {
+    flex: 1,
+  },
+  securityCodeDivider: {
+    width: 1,
+    backgroundColor: '#dfe3e8',
+    marginHorizontal: 13,
+  },
+  securityCodeLabel: {
+    color: '#8b95a1',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  securityCodeValue: {
+    color: '#f26522',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+  securityCodeHelp: {
+    color: '#6b7280',
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 5,
   },
   routeSummary: {
     marginTop: 18,
