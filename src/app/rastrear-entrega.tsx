@@ -20,10 +20,9 @@ import {
   View,
 } from 'react-native';
 
-import MapView, {
-  Marker,
-  type Region,
-} from 'react-native-maps';
+import {
+  WebView,
+} from 'react-native-webview';
 
 import {
   getDeliveryDetails,
@@ -101,9 +100,6 @@ export default function RastrearEntregaScreen() {
 
   const deliveryId =
     Number(params.id || 0);
-
-  const mapRef =
-    useRef<MapView | null>(null);
 
   const [delivery, setDelivery] =
     useState<TrackingDelivery | null>(null);
@@ -221,15 +217,7 @@ export default function RastrearEntregaScreen() {
         ),
       );
 
-      mapRef.current?.animateCamera(
-        {
-          center: nextPosition,
-          zoom: 16,
-        },
-        {
-          duration: 700,
-        },
-      );
+
     }
 
     function handleStatusUpdate(
@@ -441,25 +429,179 @@ export default function RastrearEntregaScreen() {
         </View>
       </View>
 
-      <View style={styles.mapTest}>
-        <Text style={styles.mapTestIcon}>
-          🗺️
-        </Text>
+      <View style={styles.mapContainer}>
+        <WebView
+          originWhitelist={['*']}
+          javaScriptEnabled
+          domStorageEnabled
+          style={styles.mapWebView}
+          source={{
+            html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+  />
 
-        <Text style={styles.mapTestTitle}>
-          Rastreamento conectado
-        </Text>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
 
-        <Text style={styles.mapTestText}>
-          Aguardando configuração do mapa.
-        </Text>
+  <style>
+    html,
+    body,
+    #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
 
-        {driverPosition && (
-          <Text style={styles.mapTestCoordinates}>
-            {driverPosition.latitude},
-            {driverPosition.longitude}
-          </Text>
-        )}
+    .driver-marker {
+      width: 42px;
+      height: 42px;
+      border-radius: 21px;
+      background: #17202a;
+      border: 4px solid #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 3px 8px rgba(0,0,0,.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+
+  <script>
+    const fallbackLat = -23.3509;
+    const fallbackLng = -47.8465;
+
+    const driverLat =
+      ${driverPosition?.latitude ?? 'null'};
+
+    const driverLng =
+      ${driverPosition?.longitude ?? 'null'};
+
+    const pickupLat =
+      ${pickupPosition?.latitude ?? 'null'};
+
+    const pickupLng =
+      ${pickupPosition?.longitude ?? 'null'};
+
+    const destinationLat =
+      ${destinationPosition?.latitude ?? 'null'};
+
+    const destinationLng =
+      ${destinationPosition?.longitude ?? 'null'};
+
+    const centerLat =
+      driverLat ??
+      pickupLat ??
+      destinationLat ??
+      fallbackLat;
+
+    const centerLng =
+      driverLng ??
+      pickupLng ??
+      destinationLng ??
+      fallbackLng;
+
+    const map = L.map('map').setView(
+      [centerLat, centerLng],
+      15
+    );
+
+    L.tileLayer(
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution:
+          '&copy; OpenStreetMap contributors'
+      }
+    ).addTo(map);
+
+    const bounds = [];
+
+    if (
+      pickupLat !== null &&
+      pickupLng !== null
+    ) {
+      const pickupMarker = L.marker(
+        [pickupLat, pickupLng]
+      )
+        .addTo(map)
+        .bindPopup('Local da coleta');
+
+      bounds.push(
+        [pickupLat, pickupLng]
+      );
+    }
+
+    if (
+      destinationLat !== null &&
+      destinationLng !== null
+    ) {
+      const destinationMarker = L.marker(
+        [destinationLat, destinationLng]
+      )
+        .addTo(map)
+        .bindPopup('Destino da entrega');
+
+      bounds.push(
+        [destinationLat, destinationLng]
+      );
+    }
+
+    if (
+      driverLat !== null &&
+      driverLng !== null
+    ) {
+      const driverIcon = L.divIcon({
+        className: '',
+        html:
+          '<div class="driver-marker">🛵</div>',
+        iconSize: [42, 42],
+        iconAnchor: [21, 21],
+      });
+
+      L.marker(
+        [driverLat, driverLng],
+        {
+          icon: driverIcon,
+        }
+      )
+        .addTo(map)
+        .bindPopup('Entregador');
+
+      bounds.push(
+        [driverLat, driverLng]
+      );
+    }
+
+    if (bounds.length >= 2) {
+      map.fitBounds(
+        bounds,
+        {
+          padding: [40, 40],
+        }
+      );
+    }
+  </script>
+</body>
+</html>
+            `,
+          }}
+        />
       </View>
 
       <View style={styles.bottomCard}>
@@ -714,32 +856,14 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  mapTest: {
+  mapContainer: {
+    flex: 1,
+    minHeight: 330,
+    backgroundColor: '#e9eef4',
+  },
+  mapWebView: {
     flex: 1,
     backgroundColor: '#e9eef4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  mapTestIcon: {
-    fontSize: 54,
-  },
-  mapTestTitle: {
-    color: '#17202a',
-    fontSize: 22,
-    fontWeight: '900',
-    marginTop: 14,
-  },
-  mapTestText: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginTop: 7,
-  },
-  mapTestCoordinates: {
-    color: '#f26522',
-    fontSize: 13,
-    fontWeight: '800',
-    marginTop: 12,
   },
   driverMarker: {
     width: 52,
