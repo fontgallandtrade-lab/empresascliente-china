@@ -236,7 +236,14 @@ export async function getDeliveryDetails(
     await api.get<DeliveryDetailsResponse>(
       `/deliveries/${deliveryId}`,
       {
-        headers: await authHeaders(),
+        headers: {
+          ...(await authHeaders()),
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+        params: {
+          _t: Date.now(),
+        },
       },
     );
 

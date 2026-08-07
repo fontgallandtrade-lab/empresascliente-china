@@ -114,6 +114,9 @@ export default function RastrearEntregaScreen() {
   const [loading, setLoading] =
     useState(true);
 
+  const [loadError, setLoadError] =
+    useState<string | null>(null);
+
   const [connected, setConnected] =
     useState(false);
 
@@ -128,6 +131,7 @@ export default function RastrearEntregaScreen() {
 
       try {
         setLoading(true);
+        setLoadError(null);
 
         const result =
           await getDeliveryDetails(deliveryId);
@@ -145,6 +149,17 @@ export default function RastrearEntregaScreen() {
             storedDriverPosition,
           );
         }
+      } catch (error) {
+        console.log(
+          '[tracking] Erro ao carregar entrega:',
+          error,
+        );
+
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar esta entrega.',
+        );
       } finally {
         setLoading(false);
       }
@@ -304,7 +319,7 @@ export default function RastrearEntregaScreen() {
     );
   }
 
-  if (loading || !delivery) {
+  if (loading) {
     return (
       <SafeAreaView style={styles.center}>
         <ActivityIndicator
@@ -315,6 +330,30 @@ export default function RastrearEntregaScreen() {
         <Text style={styles.loadingText}>
           Carregando rastreamento...
         </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError || !delivery) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.errorTitle}>
+          Não foi possível carregar
+        </Text>
+
+        <Text style={styles.loadingText}>
+          {loadError ||
+            'Entrega não encontrada.'}
+        </Text>
+
+        <TouchableOpacity
+          style={styles.backErrorButton}
+          onPress={loadDelivery}
+        >
+          <Text style={styles.backErrorText}>
+            TENTAR NOVAMENTE
+          </Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
