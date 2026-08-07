@@ -364,11 +364,7 @@ export default function RastrearEntregaScreen() {
       longitude: -47.8465,
     };
 
-  const initialRegion: Region = {
-    ...initialCenter,
-    latitudeDelta: 0.045,
-    longitudeDelta: 0.045,
-  };
+
 
   return (
     <SafeAreaView style={styles.container}>
