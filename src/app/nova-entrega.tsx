@@ -526,9 +526,23 @@ export default function NovaEntregaScreen() {
         routePoint.requires_confirmation,
       );
 
-      openPointMap(
-        target,
-        suggestedPoint,
+      Alert.alert(
+        'DIAGNÓSTICO DO MAPA',
+        `${target === 'pickup' ? 'COLETA' : 'ENTREGA'}\n` +
+        `${address.street}, ${address.number}\n\n` +
+        `Latitude: ${suggestedPoint.latitude}\n` +
+        `Longitude: ${suggestedPoint.longitude}\n\n` +
+        `Precisão: ${routePoint.location_precision || 'não informada'}`,
+        [
+          {
+            text: 'ABRIR MAPA',
+            onPress: () =>
+              openPointMap(
+                target,
+                suggestedPoint,
+              ),
+          },
+        ],
       );
     } catch (error: any) {
       console.error(
