@@ -68,17 +68,17 @@ export type QuoteResponse = {
   quote: QuoteResult;
 };
 
+export type RoutePoint = {
+  latitude: number;
+  longitude: number;
+  display_name: string;
+  requires_confirmation?: boolean;
+  location_precision?: 'exact' | 'street' | string;
+};
+
 export type RouteResult = {
-  pickup: {
-    latitude: number;
-    longitude: number;
-    display_name: string;
-  };
-  destination: {
-    latitude: number;
-    longitude: number;
-    display_name: string;
-  };
+  pickup: RoutePoint;
+  destination: RoutePoint;
   route_distance_km: number;
   estimated_duration_minutes: number;
 };
@@ -153,6 +153,34 @@ export async function createDelivery(
     await api.post<CreateDeliveryResponse>(
       '/deliveries',
       payload,
+      {
+        headers: await authHeaders(),
+      },
+    );
+
+  return response.data;
+}
+
+export type PixPaymentResponse = {
+  success: boolean;
+  payment: {
+    provider: 'asaas' | string;
+    id: string;
+    status: string;
+    amount: number;
+    pix_payload: string;
+    pix_encoded_image: string;
+    expiration_date?: string | null;
+  };
+};
+
+export async function createPixPayment(
+  deliveryId: number,
+): Promise<PixPaymentResponse> {
+  const response =
+    await api.post<PixPaymentResponse>(
+      `/payments/deliveries/${deliveryId}/pix`,
+      {},
       {
         headers: await authHeaders(),
       },

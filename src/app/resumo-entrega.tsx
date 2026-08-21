@@ -78,19 +78,27 @@ export default function ResumoEntregaScreen() {
       const response =
         await createDelivery(payload);
 
+      const navigationParams = {
+        deliveryId: String(response.delivery.id),
+        publicCode: response.delivery.public_code,
+        pickupCode: response.delivery.pickup_code,
+        deliveryCode: response.delivery.delivery_code,
+        total: money(
+          response.delivery.quote.total_price,
+        ),
+      };
+
+      if (payload.payment_method === 'pix') {
+        router.replace({
+          pathname: '/pagamento-pix',
+          params: navigationParams,
+        } as any);
+        return;
+      }
+
       router.replace({
         pathname: '/entrega-criada',
-        params: {
-          publicCode:
-            response.delivery.public_code,
-          pickupCode:
-            response.delivery.pickup_code,
-          deliveryCode:
-            response.delivery.delivery_code,
-          total: money(
-            response.delivery.quote.total_price,
-          ),
-        },
+        params: navigationParams,
       } as any);
     } catch (error: any) {
       Alert.alert(
