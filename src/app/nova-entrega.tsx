@@ -864,6 +864,48 @@ export default function NovaEntregaScreen() {
         JSON.stringify(route, null, 2),
       );
 
+      const pickupNeedsConfirmation =
+        !effectivePickupPoint &&
+        route.pickup?.location_precision !== 'exact';
+
+      const destinationNeedsConfirmation =
+        !effectiveDestinationPoint &&
+        route.destination?.location_precision !== 'exact';
+
+      if (
+        pickupNeedsConfirmation ||
+        destinationNeedsConfirmation
+      ) {
+        setLoadingQuote(false);
+
+        Alert.alert(
+          'Confirme o endereço no mapa',
+          'Não conseguimos localizar o número exato do endereço. Por favor, confirme a posição no mapa antes de calcular.',
+        );
+
+        if (pickupNeedsConfirmation) {
+          openPointMap(
+            'pickup',
+            {
+              latitude: Number(route.pickup.latitude),
+              longitude: Number(route.pickup.longitude),
+            },
+            true,
+          );
+        } else if (destinationNeedsConfirmation) {
+          openPointMap(
+            'destination',
+            {
+              latitude: Number(route.destination.latitude),
+              longitude: Number(route.destination.longitude),
+            },
+            true,
+          );
+        }
+
+        return;
+      }
+
       const payload = buildPayload(route);
 
       if (!payload) {
