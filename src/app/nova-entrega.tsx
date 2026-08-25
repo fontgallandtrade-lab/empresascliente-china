@@ -533,7 +533,16 @@ export default function NovaEntregaScreen() {
       [field]: value,
     }));
 
-    setPickupPoint(null);
+    if (
+      field === 'street' ||
+      field === 'neighborhood' ||
+      field === 'city' ||
+      field === 'state' ||
+      field === 'postal_code'
+    ) {
+      setPickupPoint(null);
+    }
+
     setRouteResult(null);
     setQuote(null);
   }
@@ -547,7 +556,16 @@ export default function NovaEntregaScreen() {
       [field]: value,
     }));
 
-    setDestinationPoint(null);
+    if (
+      field === 'street' ||
+      field === 'neighborhood' ||
+      field === 'city' ||
+      field === 'state' ||
+      field === 'postal_code'
+    ) {
+      setDestinationPoint(null);
+    }
+
     setRouteResult(null);
     setQuote(null);
   }
