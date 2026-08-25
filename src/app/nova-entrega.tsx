@@ -23,6 +23,8 @@ import {
   calculateAddressRoute,
   calculateQuote,
   createDelivery,
+  autocompleteAddress,
+  type AddressSuggestion,
   type DeliveryPayload,
   type QuoteResult,
   type RouteResult,
@@ -391,6 +393,18 @@ export default function NovaEntregaScreen() {
   const [destinationPoint, setDestinationPoint] =
     useState<ConfirmedPoint | null>(null);
 
+  const [pickupSuggestions, setPickupSuggestions] =
+    useState<AddressSuggestion[]>([]);
+
+  const [destinationSuggestions, setDestinationSuggestions] =
+    useState<AddressSuggestion[]>([]);
+
+  const [loadingPickupSuggestions, setLoadingPickupSuggestions] =
+    useState(false);
+
+  const [loadingDestinationSuggestions, setLoadingDestinationSuggestions] =
+    useState(false);
+
   const [mapVisible, setMapVisible] =
     useState(false);
 
@@ -408,6 +422,107 @@ export default function NovaEntregaScreen() {
 
   const [resumeQuoteAfterMap, setResumeQuoteAfterMap] =
     useState(false);
+
+  async function searchPickupAddress(value: string) {
+    updatePickup('street', value);
+
+    // Ao editar a rua, a coordenada anteriormente selecionada
+    // deixa de ser confiável até uma nova sugestão ser escolhida.
+    setPickupPoint(null);
+    setRouteResult(null);
+    setQuote(null);
+
+    if (value.trim().length < 3) {
+      setPickupSuggestions([]);
+      return;
+    }
+
+    try {
+      setLoadingPickupSuggestions(true);
+
+      const suggestions = await autocompleteAddress(
+        value,
+        pickup.city || 'Tatuí',
+      );
+
+      setPickupSuggestions(suggestions);
+    } catch (error) {
+      console.error('[autocomplete] coleta:', error);
+      setPickupSuggestions([]);
+    } finally {
+      setLoadingPickupSuggestions(false);
+    }
+  }
+
+  async function searchDestinationAddress(value: string) {
+    updateDestination('street', value);
+
+    // Ao editar a rua, invalida a coordenada anterior.
+    setDestinationPoint(null);
+    setRouteResult(null);
+    setQuote(null);
+
+    if (value.trim().length < 3) {
+      setDestinationSuggestions([]);
+      return;
+    }
+
+    try {
+      setLoadingDestinationSuggestions(true);
+
+      const suggestions = await autocompleteAddress(
+        value,
+        destination.city || 'Tatuí',
+      );
+
+      setDestinationSuggestions(suggestions);
+    } catch (error) {
+      console.error('[autocomplete] entrega:', error);
+      setDestinationSuggestions([]);
+    } finally {
+      setLoadingDestinationSuggestions(false);
+    }
+  }
+
+  function selectPickupSuggestion(item: AddressSuggestion) {
+    setPickup(previous => ({
+      ...previous,
+      street: item.street || previous.street,
+      neighborhood: item.neighborhood || previous.neighborhood,
+      city: item.city || previous.city,
+      state: item.state || previous.state,
+      postal_code: item.postal_code || previous.postal_code,
+    }));
+
+    setPickupPoint({
+      latitude: Number(item.latitude),
+      longitude: Number(item.longitude),
+    });
+
+    setPickupSuggestions([]);
+    setRouteResult(null);
+    setQuote(null);
+  }
+
+  function selectDestinationSuggestion(item: AddressSuggestion) {
+    setDestination(previous => ({
+      ...previous,
+      street: item.street || previous.street,
+      neighborhood: item.neighborhood || previous.neighborhood,
+      city: item.city || previous.city,
+      state: item.state || previous.state,
+      postal_code: item.postal_code || previous.postal_code,
+    }));
+
+    setDestinationPoint({
+      latitude: Number(item.latitude),
+      longitude: Number(item.longitude),
+    });
+
+    setDestinationSuggestions([]);
+    setRouteResult(null);
+    setQuote(null);
+  }
 
   function updatePickup(
     field: keyof AddressForm,
@@ -1064,11 +1179,44 @@ export default function NovaEntregaScreen() {
             <InputField
               label="Rua"
               value={pickup.street}
-              onChangeText={value =>
-                updatePickup('street', value)
-              }
+              onChangeText={searchPickupAddress}
+              placeholder="Digite pelo menos 3 letras"
               required
             />
+
+            {loadingPickupSuggestions ? (
+              <ActivityIndicator
+                size="small"
+                style={styles.autocompleteLoading}
+              />
+            ) : null}
+
+            {pickupSuggestions.length > 0 ? (
+              <View style={styles.suggestionsBox}>
+                {pickupSuggestions.slice(0, 5).map((item, index) => (
+                  <TouchableOpacity
+                    key={`pickup-${index}`}
+                    style={styles.suggestionItem}
+                    onPress={() => selectPickupSuggestion(item)}
+                  >
+                    <Text style={styles.suggestionStreet}>
+                      {item.street}
+                    </Text>
+
+                    <Text style={styles.suggestionDetails}>
+                      {[
+                        item.neighborhood,
+                        item.city,
+                        item.state,
+                        item.postal_code,
+                      ]
+                        .filter(Boolean)
+                        .join(' - ')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.row}>
               <View style={styles.rowSmall}>
@@ -1223,14 +1371,44 @@ export default function NovaEntregaScreen() {
             <InputField
               label="Rua"
               value={destination.street}
-              onChangeText={value =>
-                updateDestination(
-                  'street',
-                  value,
-                )
-              }
+              onChangeText={searchDestinationAddress}
+              placeholder="Digite pelo menos 3 letras"
               required
             />
+
+            {loadingDestinationSuggestions ? (
+              <ActivityIndicator
+                size="small"
+                style={styles.autocompleteLoading}
+              />
+            ) : null}
+
+            {destinationSuggestions.length > 0 ? (
+              <View style={styles.suggestionsBox}>
+                {destinationSuggestions.slice(0, 5).map((item, index) => (
+                  <TouchableOpacity
+                    key={`destination-${index}`}
+                    style={styles.suggestionItem}
+                    onPress={() => selectDestinationSuggestion(item)}
+                  >
+                    <Text style={styles.suggestionStreet}>
+                      {item.street}
+                    </Text>
+
+                    <Text style={styles.suggestionDetails}>
+                      {[
+                        item.neighborhood,
+                        item.city,
+                        item.state,
+                        item.postal_code,
+                      ]
+                        .filter(Boolean)
+                        .join(' - ')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.row}>
               <View style={styles.rowSmall}>
@@ -2099,5 +2277,38 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '900',
+  },
+
+  suggestionsBox: {
+    marginTop: -8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+
+  suggestionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+
+  suggestionStreet: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+
+  suggestionDetails: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#6b7280',
+  },
+
+  autocompleteLoading: {
+    marginVertical: 8,
   },
 });
