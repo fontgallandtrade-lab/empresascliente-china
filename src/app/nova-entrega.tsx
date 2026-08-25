@@ -494,10 +494,10 @@ export default function NovaEntregaScreen() {
       postal_code: item.postal_code || previous.postal_code,
     }));
 
-    setPickupPoint({
-      latitude: Number(item.latitude),
-      longitude: Number(item.longitude),
-    });
+    // A coordenada do autocomplete representa apenas uma sugestão
+    // da rua/região. Não deve ser tratada como ponto confirmado.
+    // Somente confirmMapPoint() pode definir pickupPoint.
+    setPickupPoint(null);
 
     setPickupSuggestions([]);
     setRouteResult(null);
@@ -514,10 +514,10 @@ export default function NovaEntregaScreen() {
       postal_code: item.postal_code || previous.postal_code,
     }));
 
-    setDestinationPoint({
-      latitude: Number(item.latitude),
-      longitude: Number(item.longitude),
-    });
+    // A coordenada do autocomplete representa apenas uma sugestão
+    // da rua/região. Não deve ser tratada como ponto confirmado.
+    // Somente confirmMapPoint() pode definir destinationPoint.
+    setDestinationPoint(null);
 
     setDestinationSuggestions([]);
     setRouteResult(null);
