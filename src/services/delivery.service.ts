@@ -277,3 +277,42 @@ export async function getDeliveryDetails(
 
   return response.data.delivery;
 }
+
+export type AddressSuggestion = {
+  street: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  latitude: number;
+  longitude: number;
+};
+
+type AddressAutocompleteResponse = {
+  success: boolean;
+  suggestions: AddressSuggestion[];
+};
+
+export async function autocompleteAddress(
+  query: string,
+  city = 'Tatuí',
+): Promise<AddressSuggestion[]> {
+  const normalizedQuery = query.trim();
+
+  if (normalizedQuery.length < 3) {
+    return [];
+  }
+
+  const response =
+    await api.get<AddressAutocompleteResponse>(
+      '/routes/autocomplete',
+      {
+        params: {
+          q: normalizedQuery,
+          city,
+        },
+      },
+    );
+
+  return response.data.suggestions || [];
+}
