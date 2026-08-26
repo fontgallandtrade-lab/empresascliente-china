@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 
+
 import {
   ActivityIndicator,
   Alert,
@@ -838,8 +839,8 @@ export default function NovaEntregaScreen() {
           pickup.postal_code.trim(),
         reference_point:
           pickup.reference_point.trim(),
-        latitude: route.pickup.latitude,
-        longitude: route.pickup.longitude,
+        latitude: pickupPoint?.latitude ?? null,
+        longitude: pickupPoint?.longitude ?? null,
       },
 
       destination: {
@@ -867,9 +868,9 @@ export default function NovaEntregaScreen() {
         reference_point:
           destination.reference_point.trim(),
         latitude:
-          route.destination.latitude,
+          destinationPoint?.latitude ?? null,
         longitude:
-          route.destination.longitude,
+          destinationPoint?.longitude ?? null,
       },
 
       package_type: packageType,

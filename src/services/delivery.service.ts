@@ -13,8 +13,8 @@ export type AddressPayload = {
   state: string;
   postal_code?: string;
   reference_point?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type DeliveryPayload = {
