@@ -536,6 +536,7 @@ export default function NovaEntregaScreen() {
 
     if (
       field === 'street' ||
+      field === 'number' ||
       field === 'neighborhood' ||
       field === 'city' ||
       field === 'state' ||
@@ -559,6 +560,7 @@ export default function NovaEntregaScreen() {
 
     if (
       field === 'street' ||
+      field === 'number' ||
       field === 'neighborhood' ||
       field === 'city' ||
       field === 'state' ||
